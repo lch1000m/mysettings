@@ -1,0 +1,14 @@
+{
+    "font_size": 11,
+    "highlight_line": true,
+    "ignored_packages":
+    [
+        "Vintage"
+    ],
+    "phoenix_color_green": true,
+    "phoenix_sidebar_tree_large": true,
+    "phoenix_solid_current_tab": true,
+    "theme": "Phoenix Dark.sublime-theme",
+    "translate_tabs_to_spaces": true,
+    "word_wrap": true
+}
