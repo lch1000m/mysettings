@@ -12,11 +12,7 @@ class ProcessManagerApp:
         self.root = root
         self.root.title("프로세스 관리자")
         self.root.geometry("1000x600")
-        self.root.minsize(800, 500)
-        
-        # 아이콘 설정 (Windows에서만 작동)
-        if os.name == 'nt':
-            self.root.iconbitmap(default='NONE')
+        self.root.minsize(800, 500)        
         
         # 프로세스 데이터를 저장할 변수
         self.processes = []
