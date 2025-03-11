@@ -1,23 +1,93 @@
 import os
 import subprocess
 import sys
-from glob import glob
 from pathlib import Path
 
-# 현재 스크립트 위치로 작업 디렉토리 변경
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-def find_python_files(start_path='.'):
-    """현재 디렉토리 및 모든 하위 디렉토리에서 .py 및 .pyw 파일을 찾습니다."""
+def list_python_files(current_path='.'):
+    """현재 폴더의 Python 파일과 하위 폴더를 표시합니다."""
+    # 현재 경로의 절대 경로 구하기
+    abs_path = os.path.abspath(current_path)
+    
+    # 현재 경로 표시
+    print(f"\n현재 위치: {abs_path}\n")
+    
+    # 폴더 내의 항목들을 모두 수집
+    items = os.listdir(current_path)
+    
+    # Python 파일과 폴더 분리
     py_files = []
-    for root, dirs, files in os.walk(start_path):
+    folders = []
+    
+    for item in items:
+        item_path = os.path.join(current_path, item)
+        if os.path.isfile(item_path) and (item.endswith('.py') or item.endswith('.pyw')):
+            py_files.append(item)
+        elif os.path.isdir(item_path):
+            folders.append(item)
+    
+    # Python 파일 출력
+    if py_files:
+        print("=== Python 파일 (.py, .pyw) ===")
+        for idx, file in enumerate(py_files):
+            print(f"{idx + 1:3d}. {file}")
+    else:
+        print("현재 폴더에 Python 파일이 없습니다.")
+    
+    # 하위 폴더 출력
+    if folders:
+        print("\n=== 하위 폴더 ===")
+        for idx, folder in enumerate(folders):
+            # 폴더 내부의 Python 파일 개수 확인
+            folder_path = os.path.join(current_path, folder)
+            py_count = count_python_files(folder_path)
+            print(f"{idx + 1 + len(py_files):3d}. {folder} ({py_count}개의 Python 파일)")
+    else:
+        print("\n하위 폴더가 없습니다.")
+    
+    return py_files, folders
+
+def count_python_files(folder_path):
+    """폴더 내의 Python 파일 개수를 반환합니다."""
+    count = 0
+    for root, _, files in os.walk(folder_path):
         for file in files:
-            if file.endswith(('.py', '.pyw')):
-                full_path = os.path.join(root, file)
-                # 상대 경로로 변환
-                rel_path = os.path.relpath(full_path, start_path)
-                py_files.append((len(py_files) + 1, rel_path, full_path))
-    return py_files
+            if file.endswith('.py') or file.endswith('.pyw'):
+                count += 1
+    return count
+
+def run_python_file(file_path):
+    """Python 파일을 새 CMD 창에서 실행합니다."""
+    try:
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        # 파일의 절대 경로 구하기
+        abs_path = os.path.abspath(file_path)
+        
+        # 파일이 있는 디렉토리
+        file_dir = os.path.dirname(abs_path)
+        
+        if os.name == 'nt':  # Windows
+            if file_ext == '.py':
+                # 새 CMD 창에서 Python 파일 실행
+                cmd = f'start cmd.exe /K "cd /d "{file_dir}" && python "{abs_path}"'
+                os.system(cmd)
+            elif file_ext == '.pyw':
+                # 새 CMD 창에서 PythonW 실행 (GUI 프로그램)
+                cmd = f'start cmd.exe /K "cd /d "{file_dir}" && pythonw "{abs_path}"'
+                os.system(cmd)
+        else:  # Mac 및 Linux
+            if file_ext == '.py':
+                # 새 터미널에서 Python 파일 실행
+                cmd = f'gnome-terminal -- bash -c "cd \'{file_dir}\' && python3 \'{abs_path}\'; exec bash"'
+                os.system(cmd)
+            elif file_ext == '.pyw':
+                # 새 터미널에서 Python 실행 (GUI 프로그램)
+                cmd = f'gnome-terminal -- bash -c "cd \'{file_dir}\' && python3 \'{abs_path}\'; exec bash"'
+                os.system(cmd)
+        
+        print(f"\n'{os.path.basename(file_path)}'을(를) 새 창에서 실행했습니다.")
+    except Exception as e:
+        print(f"\n오류 발생: {str(e)}")
 
 def clear_screen():
     """운영체제에 따라 화면을 지웁니다."""
@@ -26,148 +96,57 @@ def clear_screen():
     else:  # Mac 및 Linux
         os.system('clear')
 
-def run_python_file(file_path):
-    """Python 파일을 실행합니다."""
-    try:
-        file_ext = os.path.splitext(file_path)[1].lower()
-        
-        if file_ext == '.py':
-            print(f"\n실행 중: python \"{file_path}\"")
-            subprocess.run([sys.executable, file_path], check=True)
-        elif file_ext == '.pyw':
-            print(f"\n실행 중: pythonw \"{file_path}\"")
-            # Windows에서는 pythonw로 실행
-            if os.name == 'nt':
-                subprocess.Popen(['pythonw', file_path])
-            else:
-                # Non-Windows에서는 일반 python으로 실행 (백그라운드)
-                subprocess.Popen([sys.executable, file_path])
-        
-        print("\n실행 완료. 계속하려면 Enter 키를 누르세요...")
-        input()
-    except subprocess.CalledProcessError:
-        print("\n오류가 발생했습니다. 계속하려면 Enter 키를 누르세요...")
-        input()
-
-def search_files(py_files, search_term):
-    """파일 목록에서 검색어를 포함하는 파일을 찾습니다."""
-    results = []
-    for idx, rel_path, full_path in py_files:
-        if search_term.lower() in rel_path.lower():
-            results.append((len(results) + 1, rel_path, full_path))
-    return results
-
 def main():
-    current_directory = os.getcwd()
+    current_path = '.'
     
     while True:
         clear_screen()
-        print(f"======= Python 파일 실행기 =======")
-        print(f"현재 디렉토리: {current_directory}")
-        print("\n사용 가능한 명령:")
-        print("list    - 모든 Python 파일 목록을 표시합니다")
-        print("search  - 파일 이름으로 검색합니다")
-        print("cd      - 작업 디렉토리를 변경합니다")
-        print("run     - 파일 번호로 Python 파일을 실행합니다")
-        print("exit    - 프로그램을 종료합니다")
+        print("======= Python 파일 브라우저 =======")
         
-        command = input("\n명령어를 입력하세요: ").strip().lower()
+        # 현재 폴더의 Python 파일과 하위 폴더 표시
+        py_files, folders = list_python_files(current_path)
         
-        if command == 'exit':
+        print("\n명령어:")
+        print("- 숫자 입력: 해당 항목 선택 (파일 실행 또는 폴더 진입)")
+        print("- b: 뒤로 가기 (상위 폴더로)")
+        print("- q: 종료")
+        
+        choice = input("\n선택: ").strip().lower()
+        
+        if choice == 'q':
+            print("프로그램을 종료합니다.")
             break
             
-        elif command == 'list':
-            clear_screen()
-            print(f"======= Python 파일 목록 =======")
-            py_files = find_python_files()
-            
-            if not py_files:
-                print("Python 파일을 찾을 수 없습니다.")
+        elif choice == 'b':
+            # 상위 폴더로 이동
+            if os.path.abspath(current_path) != os.path.abspath(os.path.dirname(current_path)):
+                current_path = os.path.join(current_path, '..')
             else:
-                for idx, rel_path, _ in py_files:
-                    print(f"{idx:3d}. {rel_path}")
-            
-            # 파일 실행 옵션
-            choice = input("\n실행할 파일 번호를 입력하거나 Enter 키를 눌러 메인 메뉴로 돌아갑니다: ")
-            if choice.isdigit():
-                idx = int(choice)
-                if 1 <= idx <= len(py_files):
-                    _, _, full_path = py_files[idx - 1]
-                    run_python_file(full_path)
-        
-        elif command == 'search':
-            search_term = input("검색어를 입력하세요: ")
-            clear_screen()
-            print(f"======= 검색 결과: '{search_term}' =======")
-            
-            py_files = find_python_files()
-            results = search_files(py_files, search_term)
-            
-            if not results:
-                print(f"'{search_term}'을(를) 포함하는 Python 파일을 찾을 수 없습니다.")
-            else:
-                for idx, rel_path, _ in results:
-                    print(f"{idx:3d}. {rel_path}")
-            
-            # 파일 실행 옵션
-            choice = input("\n실행할 파일 번호를 입력하거나 Enter 키를 눌러 메인 메뉴로 돌아갑니다: ")
-            if choice.isdigit():
-                idx = int(choice)
-                if 1 <= idx <= len(results):
-                    _, _, full_path = results[idx - 1]
-                    run_python_file(full_path)
-        
-        elif command == 'cd':
-            new_dir = input("새 디렉토리 경로를 입력하세요: ")
-            try:
-                os.chdir(new_dir)
-                current_directory = os.getcwd()
-            except FileNotFoundError:
-                print(f"디렉토리를 찾을 수 없습니다: {new_dir}")
-                input("계속하려면 Enter 키를 누르세요...")
-            except PermissionError:
-                print(f"디렉토리에 접근할 권한이 없습니다: {new_dir}")
+                print("이미 최상위 폴더입니다.")
                 input("계속하려면 Enter 키를 누르세요...")
         
-        elif command.startswith('run'):
-            parts = command.split()
-            if len(parts) > 1 and parts[1].isdigit():
-                idx = int(parts[1])
-                py_files = find_python_files()
-                if 1 <= idx <= len(py_files):
-                    _, _, full_path = py_files[idx - 1]
-                    run_python_file(full_path)
-                else:
-                    print(f"유효하지 않은 파일 번호입니다: {idx}")
-                    input("계속하려면 Enter 키를 누르세요...")
+        elif choice.isdigit():
+            idx = int(choice)
+            
+            # Python 파일 선택
+            if 1 <= idx <= len(py_files):
+                file_name = py_files[idx - 1]
+                file_path = os.path.join(current_path, file_name)
+                run_python_file(file_path)
+                input("\n계속하려면 Enter 키를 누르세요...")
+            
+            # 폴더 선택
+            elif len(py_files) < idx <= len(py_files) + len(folders):
+                folder_idx = idx - len(py_files) - 1
+                folder_name = folders[folder_idx]
+                current_path = os.path.join(current_path, folder_name)
+            
             else:
-                try:
-                    # 'list' 명령어 실행 후 선택
-                    clear_screen()
-                    print(f"======= Python 파일 목록 =======")
-                    py_files = find_python_files()
-                    
-                    if not py_files:
-                        print("Python 파일을 찾을 수 없습니다.")
-                    else:
-                        for idx, rel_path, _ in py_files:
-                            print(f"{idx:3d}. {rel_path}")
-                    
-                    choice = input("\n실행할 파일 번호를 입력하세요: ")
-                    if choice.isdigit():
-                        idx = int(choice)
-                        if 1 <= idx <= len(py_files):
-                            _, _, full_path = py_files[idx - 1]
-                            run_python_file(full_path)
-                        else:
-                            print(f"유효하지 않은 파일 번호입니다: {idx}")
-                            input("계속하려면 Enter 키를 누르세요...")
-                except Exception as e:
-                    print(f"오류 발생: {str(e)}")
-                    input("계속하려면 Enter 키를 누르세요...")
+                print("잘못된 선택입니다.")
+                input("계속하려면 Enter 키를 누르세요...")
         
         else:
-            print("알 수 없는 명령어입니다.")
+            print("잘못된 입력입니다.")
             input("계속하려면 Enter 키를 누르세요...")
 
 if __name__ == "__main__":
