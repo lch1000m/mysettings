@@ -4,6 +4,9 @@ import sys
 from glob import glob
 from pathlib import Path
 
+# 현재 스크립트 위치로 작업 디렉토리 변경
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 def find_python_files(start_path='.'):
     """현재 디렉토리 및 모든 하위 디렉토리에서 .py 및 .pyw 파일을 찾습니다."""
     py_files = []
